@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="jp.co.internous.eagle.model.mapper.TblCartMapper">
+	
+	<select id="findByUserId" resultType="jp.co.internous.eagle.model.domain.dto.CartDto" >
+		SELECT 
+			c.id,
+		 	p.image_full_path,
+		 	p.product_name,
+		 	p.price,
+		 	c.product_count,
+			p.price * c.product_count AS subTotal,
+			c.created_at,
+			c.updated_at
+		FROM
+			tbl_cart c
+		JOIN
+			mst_product p
+		ON
+			c.product_id = p.id
+		WHERE
+			c.user_id = #{userId}
+		ORDER BY
+			c.updated_at DESC, c.created_at DESC;
+	</select>
+	
+	<select id="findDuplicateInCart" resultType="int">
+		SELECT
+			COUNT(*)
+		FROM 
+			tbl_cart c
+		WHERE
+			c.user_id = #{userId} AND c.product_id = #{productId}
+	</select>
+
+	<delete id="deleteByCartId">
+		DELETE 
+		FROM
+			tbl_cart
+		WHERE
+			id IN
+		<foreach item="checkedId" index="index" collection="checkedIds" open="(" separator="," close=")">
+			#{checkedId}
+		</foreach>
+	</delete>
+
+</mapper>

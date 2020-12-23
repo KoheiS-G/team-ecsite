@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+
+<link href="/css/reset.css" th:href="@{/css/reset.css}" rel="stylesheet" />
+<link href="/css/style.css" th:href="@{/css/style.css}" rel="stylesheet" />
+
+<title>EAGLE BOOK</title>
+</head>
+<body>
+
+<!-- jqueryなどのリンクはpageheader.hmtlで読み込んでいるので、このファイル自体に記述する必要はない -->
+<header th:insert="fragments/page_header::pageHeader"></header>
+
+<main>
+
+	<div class="container">
+		<!-- 見出し -->
+		<h2>カート</h2>
+		<!-- ユーザーIDと紐付いたカート情報がないときに表示 -->
+		<div class="noData">
+			<p class="info">カート情報はありません。</p>
+		</div>
+		<!-- ユーザーIDと紐付いたカート情報がないときは非表示 -->
+		<table class="cart">
+			<!-- テーブルヘッダー -->
+			<tr>
+				<th>選択</th><th>画像</th><th>商品名</th><th>価格(円)</th><th>個数</th><th>小計(円)</th>
+			</tr>
+			<!-- テーブルボディ -->
+			<!-- CartControllerからカート情報を受け取り、th:eachで配列内容を表示 -->
+			<tr th:each="item:${cartList}">
+				<td>
+					<input class="checkList" type="checkbox" th:value="${item.id}" />
+				</td>
+				<td><img class="itemImage"	th:src="@{{imagePath} (imagePath=${item.imageFullPath}) }" /></td>
+				<td th:text="${item.productName}" />
+				<td class="number" th:text="${item.price}" />
+				<td class="number countTotal" th:text="${item.productCount}" />
+				<td class="number priceTotal" th:text="${item.subTotal}" />
+			</tr>
+			<tr>
+				<td class="totalArea"></td>
+				<td class="totalArea"></td>
+				<td class="totalArea">合計(円)</td>
+				<td class="totalArea"></td>
+				<!-- 合計金額はJavaScriptのsum関数で出力する -->
+				<td class="totalArea" id="countTotal" ></td>
+				<td class="totalArea" id="priceTotal" ></td>
+			</tr>
+		</table>
+		<div class="buttonArea">
+			<button class="deleteBtn" disabled>削除</button>
+			<button class="buyBtn">購入</button>
+		</div>
+	
+	</div>
+
+</main>
+
+<script th:inline="javascript">
+
+/*<![CDATA[*/
+	
+let checkList = $('.checkList');
+let userId =  /*[[${loginSession.getUserId()}]]*/ 0;
+
+// イベントリスナー
+$(() => {
+	sum();
+	nonExist();
+	$('.checkList').on('change', activeRemoveBtn);
+	$('.deleteBtn').on('click', deleteCart);
+})
+
+// カート情報がないときに「カート情報がありません。」と表示する関数
+let nonExist = (event) => {
+	let val = /*[[${cartList.size()}]]*/ 'cartList';
+	
+	if(val == 0) {
+		$('.cart').addClass('hidden');
+		$('.buttonArea').addClass('hidden');
+	} else {
+		$('.noData').addClass('hidden');
+	}
+};
+
+// カート内の商品の個数と小計を合算して表示する関数
+let sum = () => {
+	let countList = $('.countTotal');
+	let priceList = $('.priceTotal');
+	
+	let totalCount = 0;
+	let totalPrice = 0;
+	
+	for(let i = 0; i < countList.length; i++) {
+		totalCount += parseInt($(countList[i]).text());
+		totalPrice += parseInt($(priceList[i]).text());
+	}
+	$('#countTotal').text(totalCount);
+	$('#priceTotal').text(totalPrice);
+};
+
+//チェックボックスがアクティブになったとき、削除ボタンを活性化させる関数
+let activeRemoveBtn = (event) => {
+	let disabled = true;
+	for(let i = 0; i < checkList.length; i++) {
+		if(checkList[i].checked) {
+			disabled = false;
+			break;
+		}
+	}
+	$('.deleteBtn').prop("disabled", disabled);
+};
+
+// チェックされたカート内の商品を消去する関数
+let deleteCart = (event) => {
+	// カートIDを格納する配列を宣言
+	let deleteCheckList = [];
+	
+	// チェックされたカートIDを上の配列にプッシュする
+	for(let i = 0; i < checkList.length; i++) {
+		if(checkList[i].checked) {
+			deleteCheckList.push($(checkList[i]).val());
+		}
+	}
+	
+	// 配列を指定のURLにPOST送信する
+	$.ajax({
+		type: 'POST',
+		url: '/eagle/cart/delete',
+		data: JSON.stringify({
+			"deleteCartId": deleteCheckList
+		}),
+		contentType: 'application/json',
+		datatype: 'json',
+		scriptCharset: 'utf-8'
+	})
+	.then((result) => {
+		console.log('カートの削除に成功しました。');
+		location.replace('/eagle/cart/');
+	}, () => {
+		console.error('Error: ajax connection failed.');
+	});
+}
+
+ 
+$(() => {
+	$('.buyBtn').on('click', loginOrNot);	
+})
+
+// 決済ボタンを押下したときにログイン判定を行う関数
+// Thymeleafのjavascriptインライン処理で作った変数で分岐させる
+let loginOrNot = (event) => {
+	if(userId == 0 && isEmpty($('#hiddenUserName').val())){
+		alert('ログインしてください。');
+	} else {
+		window.location.href = '/eagle/settlement/';
+	}
+	
+}
+/*]]>*/ 
+
+</script>
+
+</body>
+</html>
